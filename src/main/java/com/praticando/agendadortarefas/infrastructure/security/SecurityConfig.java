@@ -2,7 +2,6 @@ package com.praticando.agendadortarefas.infrastructure.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,11 +15,16 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
 
+    // 1. As três dependências precisam estar declaradas aqui
     private final JwtRequestFilter jwtRequestFilter;
+    private final JwtUtil jwtUtil;
+    private final UserDetailsServiceImpl userDetailsService;
 
-    // Injetamos diretamente o filtro que o Spring já gerencia na memória automagicamente
-    public SecurityConfig(JwtRequestFilter jwtRequestFilter) {
+    // 2. O construtor correto recebe as TRÊS e salva todas usando o "this"
+    public SecurityConfig(JwtRequestFilter jwtRequestFilter, JwtUtil jwtUtil, UserDetailsServiceImpl userDetailsService) {
         this.jwtRequestFilter = jwtRequestFilter;
+        this.jwtUtil = jwtUtil;
+        this.userDetailsService = userDetailsService;
     }
 
     @Bean
@@ -31,28 +35,15 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 1. Desabilita a proteção CSRF, ideal para APIs Stateless
                 .csrf(AbstractHttpConfigurer::disable)
-
-                // 2. Configura a política de sessão como Stateless (não guarda estado no servidor)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-
-                // 3. Regras de autorização unificadas (Apenas um bloco para não dar conflito)
                 .authorizeHttpRequests(auth -> auth
-
-                        //.requestMatchers(HttpMethod.POST, "/usuario").permitAll()
-                        //.requestMatchers(HttpMethod.POST, "/usuario/login").permitAll()
-
-                        // Documentação do Swagger (opcional, mas comum caso o projeto use)
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-
-                        // Exige autenticação JWT para todo o restante das rotas
                         .anyRequest().authenticated()
                 )
-
-                // 4. Injeta o filtro JWT antes do filtro padrão de autenticação por usuário/senha
+                // Usando a variável que foi corretamente injetada pelo construtor
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
