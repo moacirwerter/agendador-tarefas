@@ -17,17 +17,13 @@ public class UserDetailsServiceImpl {
     @Autowired
     private usuarioClient client;
 
-
     public UserDetails carregaDadosUsuario(String email, String token) {
+        // CORRIGIDO: Nome do método alterado para buscarPorEmail
+        UsuarioDTO usuarioDTO = client.buscarPorEmail(email, token);
 
-        UsuarioDTO usuarioDTO = client.buscaUsuarioPorEmail(email, token);
         return User
-
                 .withUsername(usuarioDTO.getEmail())
                 .password(usuarioDTO.getSenha()) // Senha fictícia criptografada
-
                 .build();
     }
-
-
 }
