@@ -1,0 +1,29 @@
+package com.praticando.agendadortarefas.business.dto;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.praticando.agendadortarefas.infrastructure.enums.StatusNotificacaoEnum;
+import lombok.*;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+
+public class TarefasDTO {
+
+    private String id;
+    private String nomeTarefa;
+    private String descricaoTarefa;
+    @JsonFormat(shape = JsonFormat.Shape.STRING,pattern = "dd-MM-yyyy HH:mm:ss")
+    private LocalDateTime dataCriacao;
+    @JsonFormat(shape = JsonFormat.Shape.STRING,pattern = "dd-MM-yyyy HH:mm:ss")
+    private LocalDateTime dataEvento;
+    private String emailUsuario;
+    @JsonFormat(shape = JsonFormat.Shape.STRING,pattern = "dd-MM-yyyy HH:mm:ss")
+    private LocalDate dataAlteracao;
+    private StatusNotificacaoEnum statusNotificacaoEnum;
+}
