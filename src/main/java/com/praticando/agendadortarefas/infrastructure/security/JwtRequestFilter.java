@@ -1,66 +1,60 @@
 package com.praticando.agendadortarefas.infrastructure.security;
 
-//import com.projeto3.business.UsuarioService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
 import java.io.IOException;
+import java.util.Collections;
 
 @Component
 public class JwtRequestFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
-    private final UserDetailsServiceImpl userDetailsService;
-
-    public JwtRequestFilter(JwtUtil jwtUtil, UserDetailsServiceImpl userDetailsService) {
-        this.jwtUtil = jwtUtil;
-        this.userDetailsService = userDetailsService;
-    }
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
 
-        final String authorizationHeader = request.getHeader("Authorization");
+        final String requestTokenHeader = request.getHeader("Authorization");
 
         String username = null;
-        String token = null;
+        String jwtToken = null;
 
-        // 1. Extrai o Token e o e-mail do cabeçalho de forma segura
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            token = authorizationHeader.substring(7);
+        // Extrai o token removendo o prefixo "Bearer "
+        if (requestTokenHeader != null && requestTokenHeader.startsWith("Bearer ")) {
+            // Remove o "Bearer " e elimina quebras de linha ou espaços remanescentes de colagem do Postman
+            jwtToken = requestTokenHeader.substring(7).replaceAll("\\s+", "");
             try {
-                username = jwtUtil.extrairEmailToken(token);
+                username = jwtUtil.extrairEmailToken(jwtToken);
             } catch (Exception e) {
-                System.out.println("Erro ao extrair e-mail do token: " + e.getMessage());
+                logger.error("Erro ao extrair informações do token JWT: " + e.getMessage(), e);
             }
         }
 
-        // 2. Valida o usuário e injeta as credenciais no contexto do Spring Security
+        // Se encontrou o e-mail/usuário e não há autenticação ativa no contexto
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userDetailsService.carregaDadosUsuario(username,authorizationHeader );
 
-            try {
-                // Valida se o token bate com o usuário e não está expirado
-                if (jwtUtil.validateToken(token, username)) {
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                }
-            } catch (Exception e) {
-                System.out.println("Erro na validação das chaves do JWT: " + e.getMessage());
+            // Utiliza o método completo de validação estruturado no seu JwtUtil
+            if (jwtUtil.validateToken(jwtToken, username)) {
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                        username,
+                        null,
+                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+                );
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         }
-
-        // 3. Continua o fluxo normal da requisição obrigatoriamente
         chain.doFilter(request, response);
     }
 }

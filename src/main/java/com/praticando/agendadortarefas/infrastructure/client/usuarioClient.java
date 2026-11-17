@@ -1,16 +1,15 @@
 package com.praticando.agendadortarefas.infrastructure.client;
 
-import com.praticando.agendadortarefas.business.dto.UsuarioDTO;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestParam;
+import com.praticando.agendadortarefas.business.dto.UsuarioDTO;
+import java.util.Map;
 
-@FeignClient(name="usuario", url="${usuario.url}")
+@FeignClient(name = "usuario-client", url = "http://localhost:8080") // ou a configuração que já existir aí
 public interface usuarioClient {
-    @GetMapping("/usuario")
-    UsuarioDTO buscarPorEmail(@RequestParam("email") String email,
-                              @RequestHeader("Authorization") String token);
 
+    @PostMapping(value = "/usuario", consumes = "application/json")
+    UsuarioDTO buscarPorEmail(@RequestBody Map<String, String> body, @RequestHeader("Authorization") String token);
 }

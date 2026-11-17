@@ -1,7 +1,9 @@
+
 package com.praticando.agendadortarefas.infrastructure.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -15,36 +17,85 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
 
-    // 1. As três dependências precisam estar declaradas aqui
     private final JwtRequestFilter jwtRequestFilter;
-    private final JwtUtil jwtUtil;
-    private final UserDetailsServiceImpl userDetailsService;
 
-    // 2. O construtor correto recebe as TRÊS e salva todas usando o "this"
-    public SecurityConfig(JwtRequestFilter jwtRequestFilter, JwtUtil jwtUtil, UserDetailsServiceImpl userDetailsService) {
+    // Injeta o filtro responsável pela autenticação JWT
+    public SecurityConfig(JwtRequestFilter jwtRequestFilter) {
         this.jwtRequestFilter = jwtRequestFilter;
-        this.jwtUtil = jwtUtil;
-        this.userDetailsService = userDetailsService;
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration configuration
+    ) throws Exception {
+        return configuration.getAuthenticationManager();
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http
+    ) throws Exception {
+
         http
+                // API REST utilizando JWT
                 .csrf(AbstractHttpConfigurer::disable)
+
+                // Não utiliza sessões HTTP para autenticação
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        .sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
                 )
+
+                // Configuração de autorização
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+
+                        // Documentação Swagger
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
+
+                        // Cadastro de tarefas: exige JWT
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/tarefas"
+                        ).authenticated()
+
+                        // Consulta de tarefas do usuário: exige JWT
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/tarefas/email"
+                        ).authenticated()
+
+                        // Consulta de eventos: acesso público
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/tarefas/eventos"
+                        ).permitAll()
+
+                        // Exclusão de tarefas: exige JWT
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/tarefas"
+                        ).authenticated()
+
+                        // Atualização de tarefas: exige JWT
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/tarefas/**"
+                        ).authenticated()
+
+                        // Demais requisições exigem autenticação
                         .anyRequest().authenticated()
                 )
-                // Usando a variável que foi corretamente injetada pelo construtor
-                .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+
+                // Executa o filtro JWT antes do filtro padrão
+                .addFilterBefore(
+                        jwtRequestFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }
